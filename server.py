@@ -1,5 +1,6 @@
 import socket
 import paramiko
+import threading
 from fake_shell import executer_commande 
 from logger import log_tentative, log_commande
 HOST = "0.0.0.0"
@@ -18,11 +19,8 @@ class MonServeur(paramiko.ServerInterface) :
         return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
     def check_channel_shell_request(self, channel):
         return True
-with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as s:
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind((HOST,PORT))
-    s.listen()
-    conn,addr = s.accept()
+
+def gerer_connexion(conn,addr):
     with conn:
         print(f"Connected by {addr}")
         transport = paramiko.Transport(conn)
@@ -42,3 +40,13 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as s:
                 break
 
             print(f"Commande reçue :{commande}")
+    
+with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as s:
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind((HOST,PORT))
+    s.listen()
+    while True: 
+        conn,addr = s.accept()
+        t =threading.Thread(target=gerer_connexion,args=(conn,addr))
+        t.daemon = True
+        t.start()
